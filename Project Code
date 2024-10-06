@@ -1,0 +1,56 @@
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+# Example extracted data from TruCap
+vendor_name = "ABC Petrol Station"  # Example vendor name
+total_amount = "500.00"              # Example total amount
+
+# Step 1: Authenticate and access Google Sheets
+def authenticate_google_sheets():
+    scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    client = gspread.authorize(creds)
+    return client
+
+# Step 2: Open your Google Sheet
+def open_google_sheet(sheet_name):
+    client = authenticate_google_sheets()
+    sheet = client.open(sheet_name).sheet1
+    return sheet
+
+# Step 3: Append data to Google Sheet
+def append_data_to_sheet(sheet, vendor, amount):
+    sheet.append_row([vendor, amount])
+    print("Data successfully added to Google Sheet.")
+
+# Step 4: Send an email notification
+def send_email(vendor, amount):
+    from_email = "your-email@example.com"  # Replace with your email
+    to_email = "finance-team@example.com"   # Replace with finance team's email
+    subject = f"Receipt Submitted: {vendor}"
+    body = f"The receipt from {vendor} with a total amount of {amount} has been submitted."
+
+    msg = MIMEMultipart()
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(from_email, "your_password")  # Replace with your email password
+        server.send_message(msg)
+        server.quit()
+        print(f"Email sent to {to_email}.")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+# Main workflow
+sheet_name = "Receipts Automation"  # Replace with your actual Google Sheet name
+sheet = open_google_sheet(sheet_name)
+append_data_to_sheet(sheet, vendor_name, total_amount)
+send_email(vendor_name, total_amount)
